@@ -4,6 +4,7 @@
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
+from src.api.routes.paystack import router as accept_payments_router
 from src.core import config
 
 
@@ -22,6 +23,8 @@ def get_application() -> FastAPI:
     @app.get("/", name="index")
     async def index() -> str:
         return "Application startup complete."
+
+    app.include_router(accept_payments_router, prefix="/api")
 
     return app
 
