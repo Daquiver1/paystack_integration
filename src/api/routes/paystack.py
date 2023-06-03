@@ -89,7 +89,6 @@ async def verify_transaction(reference: str):
 async def paystack_webhook(request: Request, response: Response) -> JSONResponse:
     """Paystack webhook url."""
     event = json.loads(await request.body())
-    print("This is the event: ", event)
     event_type = event["event"]
 
     print("Webhook was triggered. ")
@@ -98,17 +97,16 @@ async def paystack_webhook(request: Request, response: Response) -> JSONResponse
     payload = body.decode()
 
     # Retrieve the value of the x-paystack-signature header
-    print(request.headers.items())
     signature = request.headers.get("x-paystack-signature")
 
     # Validate the signature
     computed_signature = hmac.new(
         PAYSTACK_SECRET_KEY_DEV.encode(), msg=payload.encode(), digestmod=hashlib.sha512
     ).hexdigest()
-    print(computed_signature)
+
     if signature == computed_signature:
         # Signature is valid, process the event
-        event = request.json()
+        event = await request.json()
         # Do something with event
 
         if event_type == "charge.success":
