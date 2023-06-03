@@ -102,7 +102,7 @@ async def paystack_webhook(request: Request, response: Response) -> JSONResponse
     transaction_id = event["data"]["id"]
     amount = event["data"]["amount"]
     email = event["data"]["customer"]["email"]
-    print("It was successful.")
+    print(event["data"])
     print(SuccessfulTransaction(**event["data"]))
     print(transaction_id, amount, email)
 
