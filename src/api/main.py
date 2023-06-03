@@ -1,11 +1,12 @@
 """Server Setup."""
 
 # Third party imports
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
 from src.api.routes.paystack import router as accept_payments_router
 from src.core import config
+
 
 
 def get_application() -> FastAPI:
@@ -20,7 +21,10 @@ def get_application() -> FastAPI:
         allow_headers=["*"],
     )
 
-    @app.get("/", name="index")
+    @app.get(
+        "/",
+        name="index",
+    )
     async def index() -> str:
         return "Application startup complete."
 

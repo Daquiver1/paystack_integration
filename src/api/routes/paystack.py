@@ -3,58 +3,77 @@
 import json
 
 import requests
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 
-from src.core.config import PAYSTACK_SECRET_KEY
+from src.core.config import PAYSTACK_SECRET_KEY_DEV, PAYSTACK_SECRET_KEY_PROD
 from src.models.create_payment import CreatePayment
 from src.models.verify_transaction import VerifyTransaction
 
 router = APIRouter()
 
 
-@router.post("/create-payment", response_model=CreatePayment)
+@router.post(
+    "/create-payment",
+    response_model=CreatePayment,
+)
 async def create_payment(email: str, amount: float):
     """Create payment."""
-    url = "https://api.paystack.co/transaction/initialize"
-    headers = {
-        "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
-        "Content-Type": "application/json",
-    }
-    data = {
-        "amount": amount * 100,
-        "email": email,
-        "currency": "GHS",
-        "channels": ["mobile_money"],
-        "metadata": {
-            "custom_fields": [
-                {
-                    "display_name": "Telegram Username",
-                    "variable_name": "Telegram Username",
-                    "value": "Daquiver",
-                },
-                {
-                    "display_name": "Telegram ID",
-                    "variable_name": "10829272",
-                    "value": "10829272",
-                },
-            ]
-        },
-    }
-    response = requests.post(url, headers=headers, json=data)
-    if response.status_code == 200 and response.json()["status"] is True:
-        print(response.json())
-        return response.json()["data"]
-    else:
-        return response
+    try:
+        url = "https://api.paystack.co/transaction/initialize"
+        headers = {
+            "Authorization": f"Bearer {PAYSTACK_SECRET_KEY_DEV}",
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true",
+        }
+
+        data = {
+            "amount": amount * 100,
+            "email": email,
+            "currency": "GHS",
+            "channels": ["mobile_money"],
+            "metadata": {
+                "custom_fields": [
+                    {
+                        "display_name": "Telegram Username",
+                        "variable_name": "Telegram Username",
+                        "value": "Daquiver",
+                    },
+                    {
+                        "display_name": "Telegram ID",
+                        "variable_name": "10829272",
+                        "value": "10829272",
+                    },
+                ]
+            },
+        }
+        response = requests.post(url, headers=headers, json=data)
+        if response.status_code == 200 and response.json()["status"] is True:
+            print(response.json())
+            return response.json()["data"]
+        else:
+            return response
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=400, detail="Invalid error")
 
 
-@router.get("/verify_transaction", response_model=VerifyTransaction)
+def callback_function(response):
+    print("Response has been triggered. ")
+    print(response)
+    return response
+
+
+@router.get(
+    "/verify_transaction",
+    # skip_browser_warning_header=Depends(skip_browser_warning_header),
+    response_model=VerifyTransaction,
+)
 async def verify_transaction(reference: str):
     """Verify transaction."""
     url = f"https://api.paystack.co/transaction/verify/{reference}"
     headers = {
-        "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
+        "Authorization": f"Bearer {PAYSTACK_SECRET_KEY_DEV}",
         "Content-Type": "application/json",
     }
     response = requests.get(url, headers=headers)
@@ -65,17 +84,86 @@ async def verify_transaction(reference: str):
 
 
 @router.post("/paystack/webhook")
-async def paystack_webhook(request: Request, response: Response):
+async def paystack_webhook(request: Request, response: Response) -> JSONResponse:
+    """Paystack webhook url."""
     event = json.loads(await request.body())
+    print("This is the event: ", event)
     event_type = event["event"]
+
+    print("Webhook was triggered. ")
 
     if event_type == "charge.success":
         # handle the completed transaction here
+        print("It was successful.")
         transaction_id = event["data"]["id"]
         amount = event["data"]["amount"]
         email = event["data"]["customer"]["email"]
-        # you can perform additional actions here, such as updating your database or sending an email notification
+        print(transaction_id, amount, email)
+        # you can perform additional actions here, such as updating your
+        #  database or sending an email notification
 
     return JSONResponse(
         content={"message": "Webhook received successfully"}, status_code=200
     )
+
+
+@router.post("/create_plan")
+async def create_plan(name: str, amount: float):
+    """Creating a plan"""
+    url = "https://api.paystack.co/plan"
+    headers = {
+        "Authorization": f"Bearer {PAYSTACK_SECRET_KEY_DEV}",
+        "Content-Type": "application/json",
+    }
+    data = {
+        "amount": amount * 100,
+        "interval": "monthly",
+        "name": name,
+    }
+    response = requests.post(url, headers=headers, json=data)
+    print(response.json())
+    print(response)
+    if response.status_code == 201:
+        return response.json()["data"]
+    else:
+        return response.json()["message"]
+
+
+@router.post("/subscribe_plan")
+async def subscribe_plan(email: str, amount: float):
+    """Subscribe to plan."""
+    url = "https://api.paystack.co/transaction/initialize"
+    headers = {
+        "Authorization": f"Bearer {PAYSTACK_SECRET_KEY_DEV}",
+        "Content-Type": "application/json",
+    }
+    data = {
+        "amount": amount * 100,
+        "email": email,
+        "channels": ["mobile_money"],
+        "plan": "PLN_467xrctrfv79mu3",
+    }
+    response = requests.post(url, headers=headers, json=data)
+    print(response.json())
+    print(response)
+    if response.status_code == 200:
+        return response.json()["data"]
+    else:
+        return response.json()["message"]
+
+
+# @router.post("/paystack/webhook")
+# async def paystack_webhook(request: Request, response: Response):
+#     event = json.loads(await request.body())
+#     event_type = event["event"]
+
+#     if event_type == "charge.success":
+#         # handle the completed transaction here
+#         transaction_id = event["data"]["id"]
+#         amount = event["data"]["amount"]
+#         email = event["data"]["customer"]["email"]
+#         # you can perform additional actions here, such as updating your database or sending an email notification
+
+#     return JSONResponse(
+#         content={"message": "Webhook received successfully"}, status_code=200
+#     )
