@@ -1,5 +1,7 @@
 """Route to accept user payments."""
 
+import hashlib
+import hmac
 import json
 
 import requests
@@ -91,20 +93,37 @@ async def paystack_webhook(request: Request, response: Response) -> JSONResponse
     event_type = event["event"]
 
     print("Webhook was triggered. ")
+    # Retrieve the request's body
+    body = await request.body()
+    payload = body.decode()
 
-    if event_type == "charge.success":
-        # handle the completed transaction here
-        print("It was successful.")
-        transaction_id = event["data"]["id"]
-        amount = event["data"]["amount"]
-        email = event["data"]["customer"]["email"]
-        print(transaction_id, amount, email)
-        # you can perform additional actions here, such as updating your
-        #  database or sending an email notification
+    # Retrieve the value of the x-paystack-signature header
+    signature = request.headers.get("x-paystack-signature")
 
-    return JSONResponse(
-        content={"message": "Webhook received successfully"}, status_code=200
-    )
+    # Validate the signature
+    computed_signature = hashlib.sha512(
+        payload.encode() + PAYSTACK_SECRET_KEY_DEV.encode()
+    ).hexdigest()
+    if signature == computed_signature:
+        # Signature is valid, process the event
+        event = request.json()
+        # Do something with event
+
+        if event_type == "charge.success":
+            # handle the completed transaction here
+            print("It was successful.")
+            transaction_id = event["data"]["id"]
+            amount = event["data"]["amount"]
+            email = event["data"]["customer"]["email"]
+            print(transaction_id, amount, email)
+            # you can perform additional actions here, such as updating your
+            #  database or sending an email notification
+
+        return JSONResponse(
+            content={"message": "Webhook received successfully"}, status_code=200
+        )
+
+    return JSONResponse(content={"message": "Invalid signature"}, status_code=404)
 
 
 @router.post("/create_plan")
