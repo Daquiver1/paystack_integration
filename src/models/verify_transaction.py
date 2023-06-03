@@ -9,3 +9,14 @@ class VerifyTransaction(CoreModel):
     status: bool
     message: str
     data: dict
+
+
+class SuccessfulTransaction(CoreModel):
+    """A model for a successful transaction."""
+
+    id: int
+    status: str
+    reference: str
+    amount: int
+    paid_at: str
+    created_at: str
