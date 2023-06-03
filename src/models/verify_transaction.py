@@ -16,7 +16,6 @@ class SuccessfulTransaction(CoreModel):
     """A model for a successful transaction."""
 
     id: int
-    email: EmailStr
     status: str
     reference: str
     amount: int
